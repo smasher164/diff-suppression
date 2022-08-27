@@ -4,11 +4,39 @@ open System.CommandLine.NamingConventionBinder
 open System.IO
 open System.Xml
 
+let exclude predicate source = Seq.filter (fun x -> not(predicate x)) source
+
+let trimPrefix (s: string) (prefix: string) = if s.StartsWith(prefix) then s.Substring(prefix.Length) else s
+
+let typesMustExist s =
+    let s = trimPrefix s "TypesMustExist : Type '"
+    ("CP0001", s.Split('\'')[0])
+
 // TODO: construct Diagnostic ID -> Target mapping
+let cci_did = Map [
+    ("TypesMustExist", "CP0001");
+    ("MembersMustExist", "CP0002");
+    ("CannotRemoveAttribute", "CP0014");
+    ("ParameterNamesCannotChange", "CP0017");
+    ("CannotChangeAttribute", "CP0015")
+]
+
+let getMapping (lines: seq<string>) =
+    lines
+        |> Seq.map (fun s -> if s.StartsWith "TypesMustExist" then typesMustExist s else ("a","b"))
+        |> Map.ofSeq
 
 let diff (txt: string) (xml: string) =
-    let lines = File.ReadLines(txt) |> Seq.skip 1 |> Seq.length
-    printfn $"{txt} has {lines} entries"
+    let lines =
+        File.ReadLines(txt)
+        |> Seq.map (fun s -> s.TrimStart [|'-'; ' '|])
+        |> exclude (fun s -> s.StartsWith "#")
+        |> exclude (fun s -> s.StartsWith "Total Issues")
+        |> exclude (fun s -> s.StartsWith "Compat issues")
+        |> exclude (fun s -> s.Trim() = "")
+
+    printfn "%A" (getMapping lines);
+    printfn $"{txt} has {Seq.length lines} entries"
     let doc = new XmlDocument()
     doc.Load xml
     let nodes = doc.SelectNodes "/Suppressions/Suppression"
