@@ -13,11 +13,30 @@ let trimPrefix (s: string) (prefix: string) =
     else
         s
 
-let typesMustExist s =
-    let s = trimPrefix s "TypesMustExist : Type '"
-    ("CP0001", s.Split('\'')[0])
+let trimSuffix (s: string) (suffix: string) =
+    if s.EndsWith(suffix) then
+        s.Substring(0, s.Length - suffix.Length)
+    else
+        s
 
-let membersMustExist s = ("CP0002", "foo")
+let typesMustExist s =
+    let typ = (trimPrefix s "TypesMustExist : Type '").Split('\'')[0]
+    ("CP0001", typ)
+
+let removeMod (mem: string) =
+    let mem = mem.Substring(1 + mem.IndexOf ' ')
+    mem.Substring(1 + mem.IndexOf ' ')
+
+let membersMustExist s =
+    let mem = (trimPrefix s "MembersMustExist : Member '").Split('\'')[0]
+    let def = removeMod mem
+    let def = def.Replace(" ", "")
+    let def = trimSuffix def "()"
+    let def = def.Replace("..ctor", ".#ctor")
+    let def = def.Replace("<", "{")
+    let def = def.Replace(">", "}")
+    ("CP0002", def)
+    
 
 // TODO: construct Diagnostic ID -> List Target mapping
 let cci_did =
